@@ -1,0 +1,26 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <title>Squaredar</title>
+  <meta content="width=320" name="viewport" />
+    <style>
+      .button {
+        float: right;
+      }
+    </style>
+</head>
+<body>
+  <h4>Thanks for coming in today &gt; Settings</h4>
+  {% if configured %}
+  <form action="reset" method="post">
+    <input type="hidden" name="reset_office" value="1" />
+    <span>Your office is {{ venue_name|escape }}</span>
+    <input type="submit" value="Reset" />
+  </form>
+  
+  {% else %}
+  <p>Next time you check-in to the office, be sure to say &rdquo;office&rdquo;
+  in your shout and we'll start clocking you in</p>
+  {% endif %}
+</body>
+</html>
