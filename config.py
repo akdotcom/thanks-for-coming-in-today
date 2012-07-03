@@ -17,7 +17,7 @@ CONFIG = {
   # The foursquare API version string to pass. See: https://developer.foursquare.com/overview/versioning
   'api_version': '20120701',
   # A name for the hompage and titles.
-  'site_name': 'Thanks for coming in today',
+  'site_name': 'Thanks for Coming in Today',
   # A description for the home page
   'site_description': 'We appreciate your time.',
   # If true, we use local_server, and log actions instead of POSTing to foursquare
