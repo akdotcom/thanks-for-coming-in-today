@@ -63,13 +63,13 @@ class ThanksFor(AbstractApp):
       user.id = checkin_json['user']['id']
       user.office_id = venue_id
       user.clockin_times = '[]'
-      settings_url = CONFIG['prod_server'] + CONFIG['auth_success_uri_mobile']
+      settings_url = utils.getServer() + CONFIG['auth_success_uri_mobile']
       params = { 'text' : 'Ohh, so this is where you work. Duly noted!',
                  'url' : settings_url}
       client.checkins.reply(checkin_json['id'], params)
 
-    if venue_id is not user.office_id:
-      if venue_id is '4ef0e7cf7beb5932d5bdeb4e':
+    if venue_id != user.office_id:
+      if venue_id == '4ef0e7cf7beb5932d5bdeb4e':
         #Easter egg!
         params = { 'text' : 'Foursquare HQ!? ' +
                   'I hear that place is full of sunshine and unicorns' }
@@ -85,6 +85,7 @@ class ThanksFor(AbstractApp):
     clockin_times = json.loads(user.clockin_times)
     avg_time = self.calculateAvg(clockin_times)
     diff = avg_time - time_of_day
+    logging.info('diff: %d' % diff)
     if diff > self.EARLY_BIRD_DELTA:
       if diff < 45:
         message = ('Look at you, clocking in %d minutes early today. Good job!'
@@ -95,6 +96,7 @@ class ThanksFor(AbstractApp):
         message = ('Look at you, clocking in %d hours early today. Good job!'
                    % (diff / 60))
       params = { 'text' : message}
+      logging.info("message: %s" % message)
       client.checkins.reply(checkin_json['id'], params)
 
     # Update list of past clock-in times.    
