@@ -15,7 +15,7 @@ import utils
 
 class ThanksFor(AbstractApp):
   MOVING_AVG_WINDOW = 10
-  EARLY_BIRD_DELTA = 30 * 60 # 30 minutes
+  EARLY_BIRD_DELTA_MINUTES = 30 # 30 minutes
 
   def appGet(self, client):
     data = { 'configured' : False }
@@ -62,7 +62,8 @@ class ThanksFor(AbstractApp):
       user = User()
       user.id = checkin_json['user']['id']
       user.office_id = venue_id
-      user.clockin_times = '[]'
+      user.clockin_dts = '[]'
+      user.best_dt = '()'
       settings_url = utils.getServer() + CONFIG['auth_success_uri_mobile']
       params = { 'text' : 'Ohh, so this is where you work. Duly noted!',
                  'url' : settings_url}
@@ -79,31 +80,49 @@ class ThanksFor(AbstractApp):
 
     # What time is it?
     tz_offset = timedelta(minutes=checkin_json['timeZoneOffset'])
-    date = datetime.utcfromtimestamp(checkin_json['createdAt']) + tz_offset
-    time_of_day = self.calculateTimeOfDay(date)
+    dt = datetime.utcfromtimestamp(checkin_json['createdAt']) + tz_offset
+    time_of_day = self.calculateTimeOfDay(dt)
+    date_str = dt.date().isoformat()
 
-    clockin_times = json.loads(user.clockin_times)
-    avg_time = self.calculateAvg(clockin_times)
+    clockin_dts = json.loads(user.clockin_dts)
+    if clockin_dts and date_str == clockin_dts[0]:
+      # Already checked in to work today
+      return
+
+    avg_time = self.calculateAvg([x[1] for x in clockin_dts])
     diff = avg_time - time_of_day
-    logging.info('diff: %d' % diff)
-    if diff > self.EARLY_BIRD_DELTA:
-      if diff < 45:
+    diff_minutes = diff / 60
+    logging.info('diff_minutes: %d' % diff)
+    best_time = json.loads(user.best_dt)
+    if not best_time:
+      best_dt = [date_str, time_of_day]
+      user.best_dt = json.dumps(best_dt)
+
+    message = None
+    if (len(clockin_dts) > self.MOVING_AVG_WINDOW / 2
+          and time_of_day < best_dt[0]):
+      message = 'Whoa, earliest office check-in EVER. Go get \'em tiger!'
+      best_dt = [date_str, time_of_day]
+      user.best_dt = json.dumps(best_dt)
+    elif diff_minutes > self.EARLY_BIRD_DELTA_MINUTES:
+      if diff_minutes < 45:
         message = ('Look at you, clocking in %d minutes early today. Good job!'
-                   % (diff / 60))
-      elif diff < 115:
+                   % diff_minutes)
+      elif diff_minutes < 115:
         message = 'Look at you, clocking in an hour early today. Good job!'
       else:
         message = ('Look at you, clocking in %d hours early today. Good job!'
-                   % (diff / 60))
+                   % (diff_minutes / 60))
+    if message:
       params = { 'text' : message}
       logging.info("message: %s" % message)
       client.checkins.reply(checkin_json['id'], params)
 
     # Update list of past clock-in times.    
-    clockin_times.insert(0, time_of_day)
-    if len(clockin_times) > self.MOVING_AVG_WINDOW:
-      clockin_times.pop()
-    user.clockin_times = json.dumps(clockin_times)
+    clockin_dts.insert(0, [date_str, time_of_day])
+    if len(clockin_dts) > self.MOVING_AVG_WINDOW:
+      clockin_dts.pop()
+    user.clockin_times = json.dumps(clockin_dts)
     user.put()
 
   def calculateTimeOfDay(self, dt):
